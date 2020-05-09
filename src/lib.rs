@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::mem::swap;
 use serde::{Serialize, Deserialize};
+use std::collections::BTreeSet;
 
 /// Rsults produced by the crate
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -17,8 +18,8 @@ pub struct User {
     /// Email address
     pub email: String,
     /// Login aliases for CSE
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub aliases: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub aliases: BTreeSet<String>,
     /// Faculty or business unit
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company: Option<String>,
@@ -26,8 +27,8 @@ pub struct User {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub department: Option<String>,
     /// CSE group memberships
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cse_groups: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub cse_groups: BTreeSet<String>,
 }
 
 impl User {
@@ -63,7 +64,7 @@ impl User {
         let zid = unsw_user.name;
         let name = unsw_user.display_name;
         let email = unsw_user.mail;
-        let aliases = cse_user.uids;
+        let aliases = cse_user.uids.into_iter().collect();
         let company = unsw_user.company;
         let department = unsw_user.department;
         let cse_groups = groups.map(|group| group.item.cn).collect();
