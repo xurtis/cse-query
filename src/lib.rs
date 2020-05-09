@@ -10,16 +10,22 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 /// A user as described by the various LDAP systems
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
+    /// UNSW zID
     pub zid: String,
+    /// Self-chosen human-readable name
     pub name: String,
+    /// Email address
     pub email: String,
+    /// Login aliases for CSE
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
     /// Faculty or business unit
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company: Option<String>,
+    /// Deparment or school
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub department: Option<String>,
+    /// CSE group memberships
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cse_groups: Vec<String>,
 }
