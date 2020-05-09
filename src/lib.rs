@@ -4,23 +4,24 @@ use std::fmt;
 use std::mem::swap;
 use serde::{Serialize, Deserialize};
 
+/// Rsults produced by the crate
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 /// A user as described by the various LDAP systems
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    zid: String,
-    name: String,
-    email: String,
+    pub zid: String,
+    pub name: String,
+    pub email: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    aliases: Vec<String>,
+    pub aliases: Vec<String>,
     /// Faculty or business unit
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    company: Option<String>,
+    pub company: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    department: Option<String>,
+    pub department: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    cse_groups: Vec<String>,
+    pub cse_groups: Vec<String>,
 }
 
 impl User {
