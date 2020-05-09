@@ -1,0 +1,21 @@
+[package]
+name = "cse-query"
+version = "0.1.0"
+authors = ["Curtis Millar <curtis@curtism.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "cse-query"
+path = "src/main.rs"
+
+[dependencies]
+ldap3 = "0.6"
+structopt = "0.3.14"
+dialoguer = "0.6.2"
+serde = { version = "1.0", features = [ "derive" ] }
+serde_json = "1.0.52"
