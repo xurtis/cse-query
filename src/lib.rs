@@ -38,26 +38,23 @@ impl User {
 
     /// Query a user from LDAP using another user's credentials
     pub fn query_other(
-        auth_zid: impl AsRef<str>,
+        auth_user: impl AsRef<str>,
         password: impl AsRef<str>,
-        subject_zid: impl AsRef<str>,
+        subject_user: impl AsRef<str>,
     ) -> Result<Self> {
-
-        let unsw = Conn::unsw(auth_zid, password)?;
-        let query = format!("(&(cn={})(objectClass=user))", subject_zid.as_ref());
-        let unsw_user = unsw
-            .search::<UnswUser>(query)?
-            .next()
-            .ok_or(Error::InsufficientResults)
-            .and_then(|user| user)?;
-
         let cse = Conn::cse()?;
-        let query = format!("(&(cn={})(objectClass=account))", subject_zid.as_ref());
-        let cse_user = cse
-            .search::<CseUser>(query)?
-            .next()
-            .ok_or(Error::InsufficientResults)
-            .and_then(|user| user)?;
+
+        let query = format!("(&(uid={})(objectClass=account))", auth_user.as_ref());
+        let auth_user = cse.search_one::<CseUser>(query)?;
+        let auth_zid = auth_user.find_zid()?;
+        let unsw = Conn::unsw(auth_zid, password)?;
+
+        let query = format!("(&(uid={})(objectClass=account))", subject_user.as_ref());
+        let cse_user = cse.search_one::<CseUser>(query)?;
+        let subject_zid = cse_user.find_zid()?;
+
+        let query = format!("(&(cn={})(objectClass=user))", subject_zid);
+        let unsw_user = unsw.search_one::<UnswUser>(query)?;
         let query = format!("(&(member={})(objectClass=groupOfNames))", &cse_user.item.dn);
         let groups = cse
             .search::<CseGroup>(query)?
@@ -111,6 +108,14 @@ impl Conn {
             .map(Deconstructor)
             .map(TryFrom::try_from);
         Ok(results)
+    }
+
+    fn search_one<R: Response>(&self, filter: String) -> Result<R> {
+        let result = self.search::<R>(filter)?
+            .next()
+            .ok_or(Error::InsufficientResults)
+            .and_then(|result| result)?;
+        Ok(result)
     }
 }
 
@@ -196,6 +201,27 @@ struct CseUser {
     uids: Vec<String>,
 }
 
+impl CseUser {
+    fn find_zid(&self) -> Result<&str> {
+        self.uids.iter()
+            .filter(|uid| is_zid(uid))
+            .map(|s| s.as_str())
+            .next()
+            .ok_or_else(|| Error::UserWithoutZid(self.item.cn.clone()))
+    }
+}
+
+fn is_zid(s: impl AsRef<str>) -> bool {
+    let s = s.as_ref();
+    if s.len() != 8 {
+        false
+    } else if &s[0..1] != "z" {
+        false
+    } else {
+        s[1..].chars().all(|c| c.is_ascii_digit())
+    }
+}
+
 impl Response for CseUser {
     const ATTRS: &'static [&'static str] = &["cn", "dn", "uid"];
 }
@@ -252,6 +278,8 @@ impl TryFrom<Deconstructor> for UnswUser {
 /// Errors produced by the interface
 #[derive(Debug)]
 pub enum Error {
+    /// Could not find a zID to use to authenticate the given user
+    UserWithoutZid(String),
     /// Not enough results were returned from an LDAP request
     InsufficientResults,
     /// The credentials used to authenticate were invalid
@@ -267,6 +295,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Error::*;
         match self {
+            UserWithoutZid(user) => write!(f, "The given user had no zID: {}", user),
             InsufficientResults => write!(f, "No results were provided for the search"),
             InvalidCredentials => write!(f, "Invalid user credentials"),
             AttributeMissing(attr) => write!(f, "Response was missing attribute: {}", attr),
